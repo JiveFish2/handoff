@@ -249,13 +249,38 @@ function Row({ k, v }: { k: string; v: string | number }) {
 
 function About() {
   return (
-    <section className="grid gap-2 px-1 text-[14px] leading-relaxed" style={{ color: "var(--mute)", maxWidth: "72ch" }}>
-      <p>
-        Every order placed in the Kilnhouse store reaches the bridge as a signed webhook, waits in a queue and is written to
-        the ERP. Switch a fault on, place an order, and watch it retry, wait for a rate limit, or land in the failed queue
-        until you replay it. The ERP never gets the same order twice, and a nightly check catches any webhook that never
-        arrived.
-      </p>
+    <section className="grid items-start gap-6 px-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+      <div className="grid gap-3 text-[14px] leading-relaxed" style={{ color: "var(--mute)", maxWidth: "62ch" }}>
+        <h2 className="label">How to try it</h2>
+        <p>
+          Every order placed in the Kilnhouse store reaches the bridge as a signed webhook, waits in a queue and is written to
+          the ERP. The ERP never gets the same order twice, and a nightly check catches any webhook that never arrived.
+        </p>
+        <ol className="grid list-decimal gap-1.5 pl-5">
+          <li>Switch a fault on under Break the ERP, for example Down.</li>
+          <li>Place a test order and click it to follow its trail.</li>
+          <li>Watch the bridge retry, waiting longer each time, then switch the fault off.</li>
+          <li>Try Rejects data: the order goes to the failed queue until you replay it.</li>
+        </ol>
+        <p>
+          Kilnhouse Coffee is a fictional roaster. The store is a real Shopify development store; the ERP is part of this
+          demo.
+        </p>
+      </div>
+      <figure className="grid gap-2">
+        <video
+          className="w-full rounded-[8px] border"
+          style={{ borderColor: "var(--line)", background: "var(--panel)" }}
+          src="/walkthrough.mp4"
+          poster="/walkthrough.jpg"
+          controls
+          preload="none"
+          playsInline
+        />
+        <figcaption className="mono text-[12.5px]" style={{ color: "var(--mute)" }}>
+          The whole tour in 76 seconds, built from this console&apos;s real screens. Waits are sped up.
+        </figcaption>
+      </figure>
     </section>
   );
 }
