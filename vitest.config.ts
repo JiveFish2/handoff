@@ -1,7 +1,7 @@
 import path from "node:path";
 import { defineConfig } from "vitest/config";
 
-const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL ?? "postgresql://handoff:handoff@localhost:5434/handoff_test";
+const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL ?? "postgresql://handoff:handoff@127.0.0.1:5434/handoff_test";
 
 export default defineConfig({
   resolve: { alias: { "@": path.resolve(__dirname, "src") } },
