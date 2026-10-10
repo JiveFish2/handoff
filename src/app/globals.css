@@ -35,9 +35,12 @@ body { font-family: var(--sans); -webkit-font-smoothing: antialiased }
 .pill.bad { color: var(--bad); background: color-mix(in srgb, var(--bad) 14%, transparent) }
 .pill.info { color: var(--mute); border-color: var(--line) }
 
-.btn { font: 600 14px/1 var(--sans); background: var(--accent); color: var(--accent-fg); border: 0; padding: 10px 14px; border-radius: 4px; cursor: pointer }
+/* Every button has a 1 px border (transparent on the solid one), so solid and outlined
+   buttons are the same height side by side. */
+.btn { display: inline-flex; align-items: center; gap: 8px; font: 600 14px/1 var(--sans); background: var(--accent); color: var(--accent-fg);
+  border: 1px solid transparent; padding: 10px 14px; border-radius: 4px; cursor: pointer }
 .btn:disabled { opacity: .55; cursor: progress }
-.btn.ghost { background: transparent; color: var(--fg); border: 1px solid var(--line) }
+.btn.ghost { background: transparent; color: var(--fg); border-color: var(--line) }
 
 @keyframes pulse { 50% { opacity: .35 } }
 .pulse { animation: pulse 1.6s ease-in-out infinite }
