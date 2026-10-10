@@ -21,50 +21,50 @@ afterAll(() => sql.end());
 describe("runDeliveryJob", () => {
   it("answers 200 when the order is delivered", async () => {
     const id = await store();
-    expect((await runDeliveryJob(sql, erpForTests(), { orderId: id, retried: 0 })).status).toBe(200);
+    expect((await runDeliveryJob(sql, erpForTests(), fakeQueue(), { orderId: id, retried: 0 })).status).toBe(200);
   });
 
   it("asks the queue to try again while the ERP is down, then delivers", async () => {
     const id = await store();
     await fault("down");
-    expect((await runDeliveryJob(sql, erpForTests(), { orderId: id, retried: 0 })).status).toBe(503);
-    expect((await runDeliveryJob(sql, erpForTests(), { orderId: id, retried: 1 })).status).toBe(503);
+    expect((await runDeliveryJob(sql, erpForTests(), fakeQueue(), { orderId: id, retried: 0 })).status).toBe(503);
+    expect((await runDeliveryJob(sql, erpForTests(), fakeQueue(), { orderId: id, retried: 1 })).status).toBe(503);
     await fault(null);
-    expect((await runDeliveryJob(sql, erpForTests(), { orderId: id, retried: 2 })).status).toBe(200);
+    expect((await runDeliveryJob(sql, erpForTests(), fakeQueue(), { orderId: id, retried: 2 })).status).toBe(200);
     expect(await sql`SELECT status, attempts FROM bridge.orders WHERE id = ${id}`).toEqual([{ status: "delivered", attempts: 3 }]);
   });
 
   it("passes the ERP's Retry-After on to the queue", async () => {
     const id = await store();
     await fault("rate_limited");
-    const job = await runDeliveryJob(sql, erpForTests(), { orderId: id, retried: 0 });
+    const job = await runDeliveryJob(sql, erpForTests(), fakeQueue(), { orderId: id, retried: 0 });
     expect(job).toMatchObject({ status: 503, headers: { "Retry-After": "5" } });
   });
 
   it("stops the queue's retries once the order is in the failed queue", async () => {
     const id = await store();
     await fault("down");
-    const job = await runDeliveryJob(sql, erpForTests(), { orderId: id, retried: MAX_RETRIES });
+    const job = await runDeliveryJob(sql, erpForTests(), fakeQueue(), { orderId: id, retried: MAX_RETRIES });
     expect(job.status).toBe(200);
     expect(await sql`SELECT status FROM bridge.orders WHERE id = ${id}`).toEqual([{ status: "failed" }]);
   });
 
   it("does not retry a permanent failure", async () => {
     const id = await store(sampleOrder([{ sku: "gift-card-25" }]));
-    expect((await runDeliveryJob(sql, erpForTests(), { orderId: id, retried: 0 })).status).toBe(200);
+    expect((await runDeliveryJob(sql, erpForTests(), fakeQueue(), { orderId: id, retried: 0 })).status).toBe(200);
   });
 });
 
 describe("replayOrder", () => {
   it("sends a failed order back to the queue once its cause is fixed", async () => {
     const id = await store(sampleOrder([{ sku: "gift-card-25" }]));
-    await runDeliveryJob(sql, erpForTests(), { orderId: id, retried: 0 });
+    await runDeliveryJob(sql, erpForTests(), fakeQueue(), { orderId: id, retried: 0 });
     await sql`INSERT INTO bridge.sku_map VALUES ('gift-card-25', 'KH-HSE-250')`;
 
     const queue = fakeQueue();
     expect(await replayOrder(sql, queue, id)).toBe(true);
     expect(queue.queued).toEqual([id]);
-    expect((await runDeliveryJob(sql, erpForTests(), { orderId: id, retried: 0 })).body.outcome).toBe("created");
+    expect((await runDeliveryJob(sql, erpForTests(), fakeQueue(), { orderId: id, retried: 0 })).body.outcome).toBe("created");
     expect(await sql`SELECT count(*)::int AS n FROM bridge.replays WHERE order_id = ${id}`).toEqual([{ n: 1 }]);
   });
 

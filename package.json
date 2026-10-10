@@ -19,7 +19,9 @@
     "shopify:order": "tsx --env-file=.env.local scripts/shopify-order.ts",
     "replay": "tsx --env-file=.env.local scripts/replay.ts",
     "qstash:schedule": "tsx --env-file=.env.local scripts/qstash-schedule.ts",
-    "fault": "tsx --env-file=.env.local scripts/fault.ts"
+    "fault": "tsx --env-file=.env.local scripts/fault.ts",
+    "erp:adjust": "tsx --env-file=.env.local scripts/erp-adjust.ts",
+    "job": "tsx --env-file=.env.local scripts/run-job.ts"
   },
   "dependencies": {
     "@upstash/qstash": "^2.12.0",

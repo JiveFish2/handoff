@@ -4,6 +4,8 @@ import { connect } from "@/lib/postgres";
 import { seed } from "@/lib/seed";
 import type { Queue } from "@/lib/queue";
 import type { ShopifyOrder } from "@/lib/shopify/order";
+import type { Store } from "@/lib/shopify/store";
+import { variants } from "@/catalog";
 
 export const sql = connect(process.env.TEST_DATABASE_URL!, 3);
 
@@ -16,7 +18,12 @@ export function erpForTests(options: { slowMs?: number; timeoutMs?: number } = {
   const server = erpServer(sql, { apiKey: API_KEY, slowMs: options.slowMs });
   const fetchToServer: typeof fetch = async (input, init) => {
     const request = new Request(input as string, { ...init, signal: undefined });
-    const handled = request.method === "POST" ? server.createOrder(request) : server.findOrders(request);
+    const path = new URL(request.url).pathname;
+    const handled =
+      path.endsWith("/stock/adjustments") ? server.adjustStock(request)
+      : path.endsWith("/stock") ? server.getStock(request)
+      : request.method === "POST" ? server.createOrder(request)
+      : server.findOrders(request);
     const signal = init?.signal;
     if (!signal) return handled;
     return new Promise<Response>((resolve, reject) => {
@@ -28,8 +35,8 @@ export function erpForTests(options: { slowMs?: number; timeoutMs?: number } = {
 }
 
 export async function reset() {
-  await sql`TRUNCATE bridge.replays, bridge.attempts, bridge.webhooks, bridge.orders, bridge.sku_map,
-    erp.order_lines, erp.orders, erp.items, erp.faults`;
+  await sql`TRUNCATE bridge.reconciliations, bridge.stock_pushes, bridge.state, bridge.replays, bridge.attempts, bridge.webhooks, bridge.orders, bridge.sku_map,
+    erp.stock_adjustments, erp.order_lines, erp.orders, erp.items, erp.faults`;
   await seed(sql);
 }
 
@@ -59,7 +66,32 @@ export function sampleOrder(lines: { sku: string | null; quantity?: number; grin
 }
 
 // A queue that only remembers what it was given.
-export function fakeQueue(): Queue & { queued: number[] } {
-  const queued: number[] = [];
-  return { queued, enqueueDelivery: async (orderId) => void queued.push(orderId) };
+export function fakeQueue(): Queue & { queued: number[]; stockSyncs: number } {
+  const queue = {
+    queued: [] as number[],
+    stockSyncs: 0,
+    enqueueDelivery: async (orderId: number) => void queue.queued.push(orderId),
+    enqueueStockSync: async () => void queue.stockSyncs++,
+  };
+  return queue;
+}
+
+// The store in memory: every catalog variant with a stock level, and a list of orders.
+export function fakeStore(start: Record<string, number> = {}) {
+  const levels = new Map(variants().map((v, i) => [v.shopifySku, { inventoryItemId: `item-${i}`, available: start[v.shopifySku] ?? 0 }]));
+  type FakeStore = Store & { orders: ShopifyOrder[]; sets: number; available(sku: string): number };
+  const store: FakeStore = {
+    orders: [],
+    sets: 0,
+    available: (sku: string) => levels.get(sku)!.available,
+    levels: async () => [...levels].map(([sku, l]) => ({ sku, ...l })),
+    setAvailable: async (items) => {
+      if (items.length) store.sets++;
+      for (const item of items) {
+        for (const level of levels.values()) if (level.inventoryItemId === item.inventoryItemId) level.available = item.quantity;
+      }
+    },
+    ordersSince: async () => store.orders,
+  };
+  return store;
 }

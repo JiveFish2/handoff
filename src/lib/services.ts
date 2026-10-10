@@ -3,6 +3,8 @@ import { sql } from "@/lib/db";
 import { erpClient } from "@/lib/erp/client";
 import { erpServer } from "@/lib/erp/server";
 import { qstashQueue } from "@/lib/queue";
+import { shopifyAdmin, type ShopifyAdmin } from "@/lib/shopify/admin";
+import { shopifyStore } from "@/lib/shopify/store";
 
 // Wiring for the running app; tests build the same pieces against their own database.
 function required(name: string): string {
@@ -32,3 +34,14 @@ export async function fromQueue(request: Request, body: string): Promise<boolean
   if (!signature) return false;
   return receiver.verify({ signature, body, clockTolerance: 5 }).catch(() => false);
 }
+
+// One Admin client per server instance, so its 24-hour token is reused between requests.
+let admin: ShopifyAdmin | null = null;
+export const store = () => {
+  admin ??= shopifyAdmin({
+    shop: required("SHOPIFY_SHOP"),
+    clientId: required("SHOPIFY_CLIENT_ID"),
+    clientSecret: required("SHOPIFY_CLIENT_SECRET"),
+  });
+  return shopifyStore(admin);
+};
