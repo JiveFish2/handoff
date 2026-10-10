@@ -35,7 +35,7 @@ export function erpForTests(options: { slowMs?: number; timeoutMs?: number } = {
 }
 
 export async function reset() {
-  await sql`TRUNCATE bridge.reconciliations, bridge.stock_pushes, bridge.state, bridge.replays, bridge.attempts, bridge.webhooks, bridge.orders, bridge.sku_map,
+  await sql`TRUNCATE bridge.demo_actions, bridge.reconciliations, bridge.stock_pushes, bridge.state, bridge.replays, bridge.attempts, bridge.webhooks, bridge.orders, bridge.sku_map,
     erp.stock_adjustments, erp.order_lines, erp.orders, erp.items, erp.faults`;
   await seed(sql);
 }
