@@ -4,6 +4,7 @@ import { sql } from "@/lib/db";
 import { consoleData, orderTrail, type ConsoleOrder } from "@/lib/console/data";
 import { describeAttempt, utcTime } from "@/lib/console/describe";
 import { LIMITS } from "@/lib/demo/limits";
+import { Logo } from "@/components/Logo";
 import { AutoRefresh, FaultSwitch, PlaceOrder, ReplayButton } from "./console/client";
 
 // The ops console: what the bridge is doing right now, one order's trail, and the switches
@@ -65,9 +66,9 @@ async function Console({ searchParams }: { searchParams: PageProps<"/">["searchP
     <Frame>
       <AutoRefresh />
       <header className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4" style={{ borderColor: "var(--line)" }}>
-        <div className="flex flex-wrap items-baseline gap-2.5">
-          <h1 className="text-[21px] font-semibold tracking-[.01em]">
-            <span style={{ color: "var(--ok)" }}>▮</span> Handoff
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <h1 className="inline-flex items-center gap-2 text-[21px] font-semibold tracking-[.01em]">
+            <Logo size={24} /> Handoff
           </h1>
           <span className="mono text-[13px]" style={{ color: "var(--mute)" }}>Shopify → ERP bridge · Kilnhouse Coffee demo</span>
         </div>
@@ -87,7 +88,7 @@ async function Console({ searchParams }: { searchParams: PageProps<"/">["searchP
           wide
           label="Last reconcile"
           value={rec?.finished_at ? utcTime(rec.finished_at).slice(0, 5) : "—"}
-          note={rec ? (rec.error ? "failed, see logs" : `${rec.orders_missing ?? 0} lost webhooks · ${rec.stock_fixed ?? 0} stock fixes`) : "not run yet"}
+          note={rec ? (rec.error ? "failed, see logs" : `${plural(rec.orders_missing ?? 0, "lost webhook")} · ${plural(rec.stock_fixed ?? 0, "stock fix", "stock fixes")}`) : "not run yet"}
         />
       </dl>
 
@@ -209,6 +210,8 @@ async function Console({ searchParams }: { searchParams: PageProps<"/">["searchP
     </Frame>
   );
 }
+
+const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 function Stat({ label, value, note, wide }: { label: string; value: string; note: string; wide?: boolean }) {
   return (
