@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { placeOrder, replay, setFault, type ActionResult } from "@/app/actions";
 
 // Re-reads the console every few seconds while the tab is visible, so a webhook, a retry or a
@@ -80,5 +80,54 @@ export function ReplayButton({ orderId }: { orderId: number }) {
       </button>
       {result && !result.ok && <Message result={result} />}
     </span>
+  );
+}
+
+// "Watch the tour": the walkthrough in a dialog over the console. The video loads only when
+// the dialog opens and stops when it closes.
+export function TourButton() {
+  const dialog = useRef<HTMLDialogElement>(null);
+  const video = useRef<HTMLVideoElement>(null);
+  const open = () => {
+    dialog.current?.showModal();
+    video.current?.play().catch(() => {});
+  };
+  const close = () => dialog.current?.close();
+  return (
+    <>
+      <button type="button" className="btn ghost inline-flex items-center gap-2" onClick={open}>
+        <svg aria-hidden viewBox="0 0 12 12" width="10" height="10"><path d="M2 1.2v9.6L10.4 6z" fill="currentColor" /></svg>
+        Watch the tour <span className="mono text-[12px]" style={{ color: "var(--mute)" }}>76 s</span>
+      </button>
+      <dialog
+        ref={dialog}
+        aria-label="Handoff walkthrough"
+        onClose={() => video.current?.pause()}
+        onClick={(e) => { if (e.target === dialog.current) close(); }}
+        className="m-auto w-[min(1180px,calc(100vw-32px))] overflow-visible bg-transparent p-0 backdrop:bg-black/75 backdrop:backdrop-blur-[2px]"
+      >
+        <div className="grid gap-3 rounded-[10px] border p-3 sm:p-4" style={{ borderColor: "var(--line)", background: "var(--panel)", color: "var(--fg)" }}>
+          <div className="flex items-center justify-between gap-3 px-1">
+            <p className="label">How Handoff works · 76 s</p>
+            <button type="button" className="btn ghost !px-2.5 !py-1.5 !text-[13px]" onClick={close} autoFocus>
+              Close
+            </button>
+          </div>
+          <video
+            ref={video}
+            className="aspect-video w-full rounded-[6px]"
+            style={{ background: "var(--bg)" }}
+            src="/walkthrough.mp4"
+            poster="/walkthrough.jpg"
+            controls
+            playsInline
+            preload="none"
+          />
+          <p className="px-1 text-[13px]" style={{ color: "var(--mute)" }}>
+            Built from this console&apos;s real screens. Waits are sped up. Close it and try the same steps yourself.
+          </p>
+        </div>
+      </dialog>
+    </>
   );
 }
