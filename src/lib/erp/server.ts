@@ -96,5 +96,40 @@ export function erpServer(sql: Sql, { apiKey, slowMs = 12_000 }: Options) {
     return json(200, { orders });
   }
 
-  return { createOrder, findOrders };
+  // GET /erp/api/stock?since=<version>
+  // Items whose stock changed after the given version, and the cursor to ask from next time.
+  async function getStock(request: Request): Promise<Response> {
+    const active = await gate(request);
+    if (active instanceof Response) return active;
+    const since = Number(new URL(request.url).searchParams.get("since") ?? 0);
+    if (!Number.isInteger(since) || since < 0) return error(400, "invalid_query", "since must be a version number");
+    const items = await sql<{ code: string; stock: number; version: string }[]>`
+      SELECT code, stock, version FROM erp.items WHERE version > ${since} ORDER BY version`;
+    const cursor = items.length ? Number(items[items.length - 1].version) : since;
+    return json(200, { items: items.map((i) => ({ code: i.code, stock: i.stock, version: Number(i.version) })), cursor });
+  }
+
+  // POST /erp/api/stock/adjustments { item_code, delta, reason }
+  async function adjustStock(request: Request): Promise<Response> {
+    const active = await gate(request);
+    if (active instanceof Response) return active;
+    const input = (await request.json().catch(() => null)) as { item_code?: unknown; delta?: unknown; reason?: unknown } | null;
+    if (typeof input?.item_code !== "string" || !Number.isInteger(input.delta) || typeof input.reason !== "string") {
+      return error(400, "invalid_body", "item_code, delta (integer) and reason are required");
+    }
+    const delta = input.delta as number;
+    const [item] = await sql.begin(async (tx) => {
+      const rows = await tx<{ code: string; stock: number }[]>`
+        UPDATE erp.items SET stock = stock + ${delta} WHERE code = ${input.item_code as string} RETURNING code, stock`;
+      if (rows.length) {
+        await tx`INSERT INTO erp.stock_adjustments (item_code, delta, reason)
+          VALUES (${input.item_code as string}, ${delta}, ${input.reason as string})`;
+      }
+      return rows;
+    });
+    if (!item) return error(422, "unknown_item", `Item ${input.item_code} does not exist`);
+    return json(201, item);
+  }
+
+  return { createOrder, findOrders, getStock, adjustStock };
 }

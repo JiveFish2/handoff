@@ -15,6 +15,7 @@ export class ErpError extends Error {
 }
 
 export type ErpOrder = { ref: string; external_ref: string; created_at: string };
+export type ErpStock = { items: { code: string; stock: number; version: number }[]; cursor: number };
 
 type Options = { baseUrl: string; apiKey: string; timeoutMs?: number; fetch?: typeof fetch };
 
@@ -45,6 +46,9 @@ export function erpClient({ baseUrl, apiKey, timeoutMs = 8_000, fetch: doFetch =
       (await call("/orders", { method: "POST", body: JSON.stringify(input) })) as ErpOrder,
     findOrders: async (externalRef: string) =>
       ((await call(`/orders?external_ref=${encodeURIComponent(externalRef)}`)) as { orders: ErpOrder[] }).orders,
+    stockSince: async (version: number) => (await call(`/stock?since=${version}`)) as ErpStock,
+    adjustStock: async (input: { item_code: string; delta: number; reason: string }) =>
+      (await call("/stock/adjustments", { method: "POST", body: JSON.stringify(input) })) as { code: string; stock: number },
   };
 }
 
