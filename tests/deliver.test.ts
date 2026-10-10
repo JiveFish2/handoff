@@ -70,16 +70,16 @@ describe("deliverOrder", () => {
     expect(await erpOrders(order)).toHaveLength(1);
   });
 
-  it("gives up on a slow ERP, and finds the order it created anyway on the next try", async () => {
+  it("gives up on a slow ERP and delivers once it answers again, without a duplicate", async () => {
     const order = sampleOrder();
     const id = await store(order);
     await fault("slow");
     const result = await deliverOrder(sql, erpForTests({ slowMs: 300, timeoutMs: 100 }), id);
-    expect(result).toMatchObject({ outcome: "failed", httpStatus: null });
+    expect(result).toMatchObject({ outcome: "failed", httpStatus: null, kind: "transient" });
 
-    await new Promise((resolve) => setTimeout(resolve, 400)); // the ERP finishes on its own
+    await new Promise((resolve) => setTimeout(resolve, 400)); // whatever the ERP was doing finishes
     await fault(null);
-    expect((await deliverOrder(sql, erpForTests(), id)).outcome).toBe("found_in_erp");
+    expect(["created", "found_in_erp"]).toContain((await deliverOrder(sql, erpForTests(), id)).outcome);
     expect(await erpOrders(order)).toHaveLength(1);
   });
 

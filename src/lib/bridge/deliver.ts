@@ -26,9 +26,9 @@ export type Delivery =
 //
 // The order is claimed first (status → delivering), so two deliveries of the same order never
 // run at the same time; a claim older than a minute belongs to a try that died half-way and
-// may be taken over. From the second try on, the ERP is asked whether it already has the
-// order: an earlier try may have created it and lost the answer, and the ERP itself will not
-// refuse a duplicate.
+// may be taken over. Before creating, the ERP is asked whether it already has the order: an
+// earlier try may have created it and lost the answer, and the ERP itself will not refuse a
+// duplicate. One read per order buys a delivery that is safe whatever happened before it.
 //
 // A failure leaves the order in `retrying`, unless it is permanent or this was the last try
 // the queue will make, in which case it goes to `failed`, the failed queue.
@@ -54,7 +54,7 @@ export async function deliverOrder(
     const rows = await sql<{ shopify_sku: string; erp_code: string }[]>`SELECT shopify_sku, erp_code FROM bridge.sku_map`;
     const lines = toErpLines(order.line_items, new Map(rows.map((r) => [r.shopify_sku, r.erp_code])));
     const ref = externalRef(order.id);
-    const existing = number > 1 ? await erp.findOrders(ref) : [];
+    const existing = await erp.findOrders(ref);
     if (existing.length > 0) {
       result = { outcome: "found_in_erp", erpRef: existing[0].ref };
     } else {
