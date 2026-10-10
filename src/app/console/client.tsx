@@ -83,8 +83,15 @@ export function ReplayButton({ orderId }: { orderId: number }) {
   );
 }
 
-// "Watch the tour": the walkthrough in a dialog over the console. The video loads only when
-// the dialog opens and stops when it closes.
+// "How to try it": the walkthrough and the steps, in a dialog over the console. The video
+// loads only when the dialog opens and stops when it closes.
+const STEPS = [
+  "Switch a fault on under Break the ERP, for example Down.",
+  "Place a test order and click it to follow its trail.",
+  "Watch the bridge retry, waiting longer each time, then switch the fault off.",
+  "Try Rejects data: the order goes to the failed queue until you replay it.",
+];
+
 export function TourButton() {
   const dialog = useRef<HTMLDialogElement>(null);
   const video = useRef<HTMLVideoElement>(null);
@@ -95,20 +102,20 @@ export function TourButton() {
   const close = () => dialog.current?.close();
   return (
     <>
-      <button type="button" className="btn ghost inline-flex items-center gap-2" onClick={open}>
+      <button type="button" className="btn ghost" onClick={open}>
         <svg aria-hidden viewBox="0 0 12 12" width="10" height="10"><path d="M2 1.2v9.6L10.4 6z" fill="currentColor" /></svg>
-        Watch the tour <span className="mono text-[12px]" style={{ color: "var(--mute)" }}>76 s</span>
+        How to try it <span className="mono text-[12px]" style={{ color: "var(--mute)" }}>76 s</span>
       </button>
       <dialog
         ref={dialog}
-        aria-label="Handoff walkthrough"
+        aria-label="How to try Handoff"
         onClose={() => video.current?.pause()}
         onClick={(e) => { if (e.target === dialog.current) close(); }}
         className="m-auto w-[min(1180px,calc(100vw-32px))] overflow-visible bg-transparent p-0 backdrop:bg-black/75 backdrop:backdrop-blur-[2px]"
       >
         <div className="grid gap-3 rounded-[10px] border p-3 sm:p-4" style={{ borderColor: "var(--line)", background: "var(--panel)", color: "var(--fg)" }}>
           <div className="flex items-center justify-between gap-3 px-1">
-            <p className="label">How Handoff works · 76 s</p>
+            <p className="label">How to try it</p>
             <button type="button" className="btn ghost !px-2.5 !py-1.5 !text-[13px]" onClick={close} autoFocus>
               Close
             </button>
@@ -123,8 +130,17 @@ export function TourButton() {
             playsInline
             preload="none"
           />
-          <p className="px-1 text-[13px]" style={{ color: "var(--mute)" }}>
-            Built from this console&apos;s real screens. Waits are sped up. Close it and try the same steps yourself.
+          <ol className="grid gap-x-5 gap-y-2 px-1 text-[13.5px] leading-snug sm:grid-cols-2 lg:grid-cols-4">
+            {STEPS.map((step, i) => (
+              <li key={i} className="grid grid-cols-[auto_minmax(0,1fr)] gap-2">
+                <span className="mono text-[12px] font-semibold" style={{ color: "var(--ok)" }}>{i + 1}</span>
+                <span>{step}</span>
+              </li>
+            ))}
+          </ol>
+          <p className="px-1 text-[12.5px]" style={{ color: "var(--mute)" }}>
+            The video is built from this console&apos;s real screens. Close it and try the same steps yourself. Kilnhouse
+            Coffee is fictional; the store is a real Shopify development store.
           </p>
         </div>
       </dialog>

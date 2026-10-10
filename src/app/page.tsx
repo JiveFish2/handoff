@@ -24,7 +24,6 @@ export default function Home({ searchParams }: PageProps<"/">) {
       <Suspense fallback={<Frame><p className="p-5 text-[14px]" style={{ color: "var(--mute)" }}>Reading the bridge…</p></Frame>}>
         <Console searchParams={searchParams} />
       </Suspense>
-      <About />
     </main>
   );
 }
@@ -247,24 +246,5 @@ function Row({ k, v }: { k: string; v: string | number }) {
       <dt style={{ color: "var(--mute)" }}>{k}</dt>
       <dd className="mono text-right">{v}</dd>
     </>
-  );
-}
-
-function About() {
-  return (
-    <section className="grid gap-3 px-1 text-[14px] leading-relaxed" style={{ color: "var(--mute)", maxWidth: "72ch" }}>
-      <h2 className="label">How to try it</h2>
-      <p>
-        Every order placed in the Kilnhouse store reaches the bridge as a signed webhook, waits in a queue and is written to
-        the ERP. The ERP never gets the same order twice, and a nightly check catches any webhook that never arrived.
-      </p>
-      <ol className="grid list-decimal gap-1.5 pl-5">
-        <li>Switch a fault on under Break the ERP, for example Down.</li>
-        <li>Place a test order and click it to follow its trail.</li>
-        <li>Watch the bridge retry, waiting longer each time, then switch the fault off.</li>
-        <li>Try Rejects data: the order goes to the failed queue until you replay it.</li>
-      </ol>
-      <p>Kilnhouse Coffee is a fictional roaster. The store is a real Shopify development store; the ERP is part of this demo.</p>
-    </section>
   );
 }
