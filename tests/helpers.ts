@@ -2,6 +2,7 @@ import { erpClient } from "@/lib/erp/client";
 import { erpServer, type FaultMode } from "@/lib/erp/server";
 import { connect } from "@/lib/postgres";
 import { seed } from "@/lib/seed";
+import type { Queue } from "@/lib/queue";
 import type { ShopifyOrder } from "@/lib/shopify/order";
 
 export const sql = connect(process.env.TEST_DATABASE_URL!, 3);
@@ -27,7 +28,7 @@ export function erpForTests(options: { slowMs?: number; timeoutMs?: number } = {
 }
 
 export async function reset() {
-  await sql`TRUNCATE bridge.attempts, bridge.webhooks, bridge.orders, bridge.sku_map,
+  await sql`TRUNCATE bridge.replays, bridge.attempts, bridge.webhooks, bridge.orders, bridge.sku_map,
     erp.order_lines, erp.orders, erp.items, erp.faults`;
   await seed(sql);
 }
@@ -55,4 +56,10 @@ export function sampleOrder(lines: { sku: string | null; quantity?: number; grin
       properties: l.grind ? [{ name: "Grind", value: l.grind }] : [],
     })),
   };
+}
+
+// A queue that only remembers what it was given.
+export function fakeQueue(): Queue & { queued: number[] } {
+  const queued: number[] = [];
+  return { queued, enqueueDelivery: async (orderId) => void queued.push(orderId) };
 }

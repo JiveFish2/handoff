@@ -49,7 +49,7 @@ describe("deliverOrder", () => {
 
     await fault("down");
     expect(await deliverOrder(sql, erpForTests(), id)).toMatchObject({ outcome: "failed", httpStatus: 503 });
-    expect(await sql`SELECT status, attempts FROM bridge.orders WHERE id = ${id}`).toEqual([{ status: "failed", attempts: 1 }]);
+    expect(await sql`SELECT status, attempts FROM bridge.orders WHERE id = ${id}`).toEqual([{ status: "retrying", attempts: 1 }]);
 
     await fault(null);
     expect(await deliverOrder(sql, erpForTests(), id)).toMatchObject({ outcome: "created" });
@@ -83,16 +83,41 @@ describe("deliverOrder", () => {
     expect(await erpOrders(order)).toHaveLength(1);
   });
 
-  it("records a rate limit as a failed try", async () => {
+  it("keeps the ERP's Retry-After when it is rate limited", async () => {
     const id = await store(sampleOrder());
     await fault("rate_limited");
-    expect(await deliverOrder(sql, erpForTests(), id)).toMatchObject({ outcome: "failed", httpStatus: 429 });
+    expect(await deliverOrder(sql, erpForTests(), id)).toMatchObject({
+      outcome: "failed", httpStatus: 429, kind: "transient", retryAfterSeconds: 5, final: false,
+    });
   });
 
-  it("fails without calling the ERP when a SKU has no mapping", async () => {
+  it("sends an unmapped SKU straight to the failed queue without calling the ERP", async () => {
     const id = await store(sampleOrder([{ sku: "gift-card-25" }]));
-    expect(await deliverOrder(sql, erpForTests(), id)).toMatchObject({ outcome: "failed", httpStatus: null });
+    expect(await deliverOrder(sql, erpForTests(), id)).toMatchObject({ outcome: "failed", kind: "permanent", final: true });
+    expect(await sql`SELECT status FROM bridge.orders WHERE id = ${id}`).toEqual([{ status: "failed" }]);
     expect(await sql`SELECT count(*)::int AS n FROM erp.orders`).toEqual([{ n: 0 }]);
+  });
+
+  it("sends an order the ERP rejects to the failed queue", async () => {
+    const id = await store(sampleOrder());
+    await fault("rejects");
+    expect(await deliverOrder(sql, erpForTests(), id)).toMatchObject({ httpStatus: 422, kind: "permanent", final: true });
+    expect(await sql`SELECT status FROM bridge.orders WHERE id = ${id}`).toEqual([{ status: "failed" }]);
+  });
+
+  it("gives up after the last try even on a transient error", async () => {
+    const id = await store(sampleOrder());
+    await fault("down");
+    expect(await deliverOrder(sql, erpForTests(), id, { lastTry: true })).toMatchObject({ kind: "transient", final: true });
+    expect(await sql`SELECT status FROM bridge.orders WHERE id = ${id}`).toEqual([{ status: "failed" }]);
+  });
+
+  it("takes over a try that died half-way, but not one still running", async () => {
+    const id = await store(sampleOrder());
+    await sql`UPDATE bridge.orders SET status = 'delivering', claimed_at = now() WHERE id = ${id}`;
+    expect(await deliverOrder(sql, erpForTests(), id)).toEqual({ outcome: "skipped" });
+    await sql`UPDATE bridge.orders SET claimed_at = now() - interval '2 minutes' WHERE id = ${id}`;
+    expect((await deliverOrder(sql, erpForTests(), id)).outcome).toBe("created");
   });
 
   it("lets only one of two simultaneous deliveries run", async () => {

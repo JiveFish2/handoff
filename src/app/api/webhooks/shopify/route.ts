@@ -1,13 +1,14 @@
 import { after } from "next/server";
 import { sql } from "@/lib/db";
-import { deliverOrder } from "@/lib/bridge/deliver";
+import { enqueue } from "@/lib/bridge/enqueue";
 import { receiveOrder } from "@/lib/bridge/receive";
-import { erp, shopifySecret } from "@/lib/services";
+import { queue, shopifySecret } from "@/lib/services";
 import { verifyWebhook } from "@/lib/shopify/hmac";
 import { parseOrder } from "@/lib/shopify/order";
 
-// Shopify expects a quick 200. The order is stored first and written to the ERP after the
-// answer has gone out, so a slow ERP never makes Shopify think the webhook failed.
+// Shopify expects a quick 200. The order is stored first and handed to the queue after the
+// answer has gone out, so a slow ERP never makes Shopify think the webhook failed. If the
+// queue cannot be reached, the order waits in `received` and the sweep queues it later.
 export async function POST(request: Request) {
   const body = await request.text();
   if (!verifyWebhook(body, request.headers.get("x-shopify-hmac-sha256"), shopifySecret())) {
@@ -33,6 +34,12 @@ export async function POST(request: Request) {
     shopDomain: request.headers.get("x-shopify-shop-domain"),
     order,
   });
-  if (received.kind === "new") after(() => deliverOrder(sql, erp(), received.orderId));
+  if (received.kind === "new") {
+    after(() =>
+      enqueue(sql, queue(), received.orderId).catch((error) =>
+        console.error(`Order ${received.orderId} not queued; the sweep will retry`, error),
+      ),
+    );
+  }
   return Response.json({ received: received.kind });
 }

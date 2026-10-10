@@ -16,9 +16,13 @@
     "shopify:check": "tsx --env-file=.env.local scripts/shopify-check.ts",
     "shopify:products": "tsx --env-file=.env.local scripts/shopify-products.ts",
     "shopify:webhooks": "tsx --env-file=.env.local scripts/shopify-webhooks.ts",
-    "shopify:order": "tsx --env-file=.env.local scripts/shopify-order.ts"
+    "shopify:order": "tsx --env-file=.env.local scripts/shopify-order.ts",
+    "replay": "tsx --env-file=.env.local scripts/replay.ts",
+    "qstash:schedule": "tsx --env-file=.env.local scripts/qstash-schedule.ts",
+    "fault": "tsx --env-file=.env.local scripts/fault.ts"
   },
   "dependencies": {
+    "@upstash/qstash": "^2.12.0",
     "next": "16.4.0",
     "postgres": "^3.4.9",
     "react": "19.3.0",
