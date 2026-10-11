@@ -15,6 +15,7 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://handoff.danielgcravo.com"),
   title: "Handoff",
   description: "An integration bridge between a Shopify store and an ERP, built to survive the ERP failing.",
 };
